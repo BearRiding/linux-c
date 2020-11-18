@@ -19,6 +19,30 @@
  * Actually only pause and fork are needed inline, so that there
  * won't be any messing with the stack from main(), but we define
  * some others too.
+ * 
+ * 2.内核的线性地址空间是如何分页的？画出从0x000000开始的7个页（包括页目录表、页表所在页）的挂接关系图，就是页目录表的前四个页目录项、第一个个页表的前7个页表项指向什么位置？给出代码证据。
+head.s 再 setup_paging 开始创建分页机制。将页目录表和 4 个页表放到物理内存的起始位置，从内存起始位置开始的 5 个页空间内容全部清零（每页 4kb），然后设置页目录表的前 4 项，使之分别指向 4 个页表。然后开始从高地址向低地址方向填写 4 个页表，依次指向内存从高地址向低地址方向的各个页面。即将第 4 个页表的最后一项（pg3+4092 指向的位置）指向寻址范围的最后一个页面。即从 0xFFF000 开始的 4kb 大小的内存空间。将第 4 个页表的倒数第二个页表项（pg3-4+4092）指向倒数第二个页面，即 0xFFF000-0x1000 开始的 4KB 字节的内存空间，依此类推。
+Head.s 中：（P39）
+setup_paging:
+movl $1024*5,%ecx /* 5 pages - pg_dir+4 page tables */
+xorl %eax,%eax
+xorl %edi,%edi /* pg_dir is at 0x000 */
+cld;rep;stosl
+movl $pg0+7,pg_dir /* set present bit/user r/w */
+movl $pg1+7,pg_dir+4 /* --------- " " --------- */
+movl $pg2+7,pg_dir+8 /* --------- " " --------- */
+movl $pg3+7,pg_dir+12 /* --------- " " --------- */
+_pg_dir 用于表示内核分页机制完成后的内核起始位置，也就是物理内存的起始位置
+0x000000，以上四句完成页目录表的前四项与页表 1， 2,3,4 的挂接
+movl $pg3+4092,%edi
+movl $0xfff007,%eax /* 16Mb - 4096 + 7 (r/w user,p) */
+std
+1: stosl /* fill pages backwards - more efficient :-) */
+subl $0x1000,%eax
+jge 1b
+完成页表项与页面的挂接，是从高地址向低地址方向完成挂接的， 16M 内存全部完成挂接
+（注意页表从 0 开始，页表 0-页表 3）图见P39
+
  */
 static inline _syscall0(int,fork)
 static inline _syscall0(int,pause)
@@ -64,6 +88,16 @@ extern long startup_time;
  * and this seems to work. I anybody has more info on the real-time
  * clock I'd be interested. Most of this was trial and error, and some
  * bios-listing reading. Urghh.
+ * 
+ * 3. 用文字和图说明中断描述符表是如何初始化的，可以举例说明（比如:set_trap_gate(0,&divide_error)），并给出代码证据。
+set_trap_gate(0,&divide_error)），并给出代码证据。
+对中断描述符表的初始化，就是将异常处理一类的中断服务程序与中断描述符表进行挂接。以 set_trap_gate(0,&divide_error)为例， 0 就表示该中断函数的地址挂接在中断描述符表的第0 项位置处，而&devide_error 就是该异常处理函数的地址，对set_trap_gate(0,&divide_error)
+进行宏展开后得到 
+%0=0x8f00， %1 指向 idt[0]的起始地址， %2 指向四个字节之后的地址处。
+#1、将地址&devide_error 放在 EAX 的低两个字节， EAX 的高两字节不变。 #2 把 0x8f00 放
+入 EDX 的低两字节，高两字节保持不变。 #3、把 EAX 放在%1 所指的地址处，占四字节。
+#4、将 EDX 放在%2 所指的地址处，占四字节。
+
  */
 
 #define CMOS_READ(addr) ({ \

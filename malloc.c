@@ -43,6 +43,43 @@
  *	system.  Except for the pages for the bucket descriptor page, the 
  *	extra pages will eventually get released back to the system, though,
  *	so it isn't all that bad.
+
+ 4.在 IA-32 中，有大约 20 多个指令是只能在 0 特权级下使用，其他的指令，比如 cli，并没 有这个约定。奇怪的是，在 Linux0.11 中，在 3 特权级的进程代码并不能使用 cli 指令，会 报特权级错误，这是为什么？请解释并给出代码证据。
+根据Intel Manual，cli和sti指令与CPL和EFLAGS[IOPL]有关。
+通过IOPL来加以保护指令in,ins,out,outs,cli,sti等I/O敏感指令，只有CPL(当前特权级)<=IOPL才能执行，低特权级访问这些指令将会产生一个一般性保护异常。
+IOPL位于EFLAGS的12-13位，仅可通过iret来改变，INIT_TASK中IOPL为0，在move_to_user_mode中直接执行“pushfl \n\t”指令，继承了内核的EFLAGS。IOPL的指令仍然为0没有改变，所以用户进程无法调用cli指令。因此，通过设置 IOPL， 3特权级的进程代码不能使用 cli 等I/O敏感指令。
+
+CLI：如果 CPL 的权限高于等于 eflags 中的 IOPL 的权限，即数值上： cpl <= IOPL，则 IF 位清除为 0；否则它不受影响。 EFLAGS 寄存器中的其他标志不受影响。#GP(0) –如果 CPL 大于（特权更小）当前程序或过程的 IOPL，产生保护模式异常。
+由于在内核 IOPL 的值初始时为 0，且未经改变。进程 0 在 move_to_user_mode 中，继承了内核的 eflags。
+move_to_user_mode()
+…
+"pushfl\n\t" \
+…
+"iret\n" \
+而进程 1 再 copy_process 中，在进程的 TSS 中，设置了 eflags 中的 IOPL 位为 0。总之，通过设置 IOPL，可以限制 3 特权级的进程代码使用 cli
+
+6. 在system.h里
+#define _set_gate(gate_addr,type,dpl,addr) \
+__asm__ ("movw %%dx,%%ax\n\t" \
+         "movw %0,%%dx\n\t" \
+         "movl %%eax,%1\n\t" \
+         "movl %%edx,%2" \
+         : \
+         : "i" ((short) (0x8000+(dpl<<13)+(type<<8))), \
+         "o" (*((char *) (gate_addr))), \
+         "o" (*(4+(char *) (gate_addr))), \
+         "d" ((char *) (addr)),"a" (0x00080000))
+#define set_intr_gate(n,addr) \
+         _set_gate(&idt[n],14,0,addr)
+ 
+#define set_trap_gate(n,addr) \
+         _set_gate(&idt[n],15,0,addr)
+#define set_system_gate(n,addr) \
+         _set_gate(&idt[n],15,3,addr)
+读懂代码。这里中断门、陷阱门、系统调用都是通过_set_gate设置的，用的是同一个嵌入汇编代码，比较明显的差别是dpl一个是3，另外两个是0，这是为什么？说明理由。
+答：
+当用户程序产生系统调用软中断后， 系统都通过system_call总入口找到具体的系统调用函数。 set_system_gate设置系统调用，须将 DPL设置为 3，允许在用户特权级（3）的进程调用，否则会引发 General Protection 异常。set_trap_gate 及 set_intr_gate 设置陷阱和中断为内核使用，需禁止用户进程调用，所以 DPL为 0。
+
  */
 
 #include <linux/kernel.h>

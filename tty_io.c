@@ -9,6 +9,37 @@
  * or rs-channels. It also implements echoing, cooked mode etc.
  *
  * Kill-line thanks to John T Kohl.
+ * 
+ * 28、操作系统如何处理多个进程等待同一个正在与硬盘交互的缓冲块？
+对于一个正在与硬盘交互的缓冲块，操作系统将其加锁。进程遇到加锁的缓冲块，需要执行wait_on_buffer。
+static inline void wait_on_buffer(struct buffer_head * bh)
+{
+	cli();
+	while (bh->b_lock)
+		sleep_on(&bh->b_wait);
+	sti();
+}
+
+在wait_on_buffer中，如果缓冲块加锁，进程需要执行sleep_on函数。
+void sleep_on(struct task_struct **p)
+{
+	struct task_struct *tmp;
+	if (!p)
+		return;
+	if (current == &(init_task.task))
+		panic("task[0] trying to sleep");
+	tmp = *p;
+	*p = current;
+	current->state = TASK_UNINTERRUPTIBLE;
+	schedule();
+	if (tmp)
+		tmp->state=0;
+}
+在sleep_on函数中，使用内核栈的机制实现了缓冲块等待队列。通过指针操作，在调用调度程序之前，队列头指针指向了当前任务结构，而函数中的临时指针tmp指向了原等待任务。从而通过该临时指针的作用，在几个进程为等待同一资源而多次调用该函数时，程序隐式构筑了一个等待队列。在插入等待队列后，sleep_on函数会调用schedule()函数执行别的进程，当进程被唤醒而重新执行时，就会执行后面的语句，把比它早进入等待队列的一个进程唤醒。
+简而言之，就是操作系统用内核栈实现了一个缓冲块进程等待队列，来管理多进程等待一个缓冲块。
+
+
+
  */
 #include <ctype.h>
 #include <errno.h>

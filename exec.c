@@ -8,13 +8,24 @@
  * #!-checking implemented by tytso.
  */
 
-/*
+/**
  * Demand-loading implemented 01.12.91 - no need to read anything but
  * the header into memory. The inode of the executable is put into
  * "current->executable", and page faults do the actual loading. Clean.
  *
  * Once more I can proudly say that linux stood up to being changed: it
  * was less than 2 hours work to get demand-loading completely implemented.
+ * 
+ * 4.bootsect、setup、head程序之间是怎么衔接的？给出代码证据。
+ * 1)bootsect 跳转到 setup 程序：jmpi 0,SETUPSEG;
+ * 这条语句跳转到 0x90200 处，即 setup 程序加载的位置，
+ * CS:IP 指向 setup 程序的第一条指令， 意味着 setup 开始执行。
+ * 2)setup 跳转到 head 程序：CPU工作模式首先转变为保护模式然后执行 jmpi 0,8
+ * 0 指的是段内偏移，8 是保护模式下的段选择符：01000，
+ * 其中后两位表示内核特权级，第三 位 0 代表 GDT，
+ * 1 则表示 GDT 表中的第一项，即内核代码段，
+ * 段基质为 0x0000000,而 head 程序地址就在这里，意味着 head 程序开始执行。 
+
  */
 
 #include <errno.h>

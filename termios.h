@@ -3,7 +3,23 @@
 
 #define TTY_BUF_SIZE 1024
 
-/* 0x54 is just a magic number to make these relatively uniqe ('T') */
+/* 0x54 is just a magic number to make these relatively uniqe ('T') 
+20、缺页中断是如何产生的，页写保护中断是如何产生的，操作系统是如何处理的？
+每一个页目录项或页表项的最后 3 位，标志着所管理的页面的属性，分别是 U/S,R/W,P.如果和一个页面建立了映射关系， P 标志就设置为 1，如果没有建立映射关系，则就是 0.进程执行时，线性地址被 MMU 即系，如果解析出某个表项的 P 位为 0，就说明没有对应页面，此时就会产生缺页中断。
+当两个进程共享了一个页面，即 R/w 为 1，导致该页面设为“只读”属性，当其中一个进程需要压栈时就会引发页写保护中断。当页写保护中断产生时，系统会为进程申请新页面，并把原页面内容复制到新页面里。
+
+
+21. Rd_load()执行完之后，虚拟盘已经成为可用的块设备，并成为根设备。在向虚拟盘中 copy任何数据之前，虚拟盘中是否有引导快、超级快、 i 节点位图、逻辑块位图、 i 节点、逻辑块？
+虚拟盘中没有引导快、超级快、 i 节点位图、逻辑块位图、 i 节点、逻辑块。在 rd_load()函数中的 memcpy(cp, bh->b_data,BLOCK_SIZE)执行以前，对虚拟盘的操作仅限于为虚拟盘分配2M 的内存空间，并将虚拟盘的所有内存区域初始化为 0.所以虚拟盘中并没有数据，仅是一段被’\0’填充的内存空间。
+（代码路径： kernel/blk_dev/ramdisk.c rd_load:）
+Rd_start = (char *)mem_start;
+Rd_length = length;
+Cp = rd_start;
+For (i=0; i<length; i++)
+*cp++=’\0\;
+
+
+*/
 
 #define TCGETS		0x5401
 #define TCSETS		0x5402

@@ -4,13 +4,24 @@
  *  (C) 1991  Linus Torvalds
  */
 
-/*
+/**
  * This is the low-level hd interrupt support. It traverses the
  * request-list, using interrupts to jump between functions. As
  * all the functions are called within interrupts, we may not
  * sleep. Special care is recommended.
  * 
  *  modified by Drew Eckhardt to check nr of hd's from the CMOS.
+ * 8.在setup程序里曾经设置过gdt，为什么在head程序中将其废弃，又重新设置了一个？
+ * 为什么设置两次，而不是一次搞好？
+ * 原来的 GDT 位于 setup 中， 将来此段内存会被缓冲区覆盖， 所以必须将 GDT 设置 head.s 所在 位置。
+ * 如果先将 GDT 设置在 head 所在区域，然后移动 system 模块，
+ * 则 GDT 会被覆盖掉，如 果先移 动 system 再复制 GDT，
+ * 则 head.s 对应的程序会被覆盖掉，所以必须重建 GDT。
+ * 若先移动 system 至 0x0000 再将 GDT 复制到 0x5cb8~0x64b8 处，
+ * 虽可以实现， 但由于 setup.s 与 head.s 连接时不在同一文件， 
+ * setup 无法直接获取 head 中的 gdt 的偏移量， 需事先写入， 
+ * 这会使设计失去一般性，给程序编写带来很大不便。
+
  */
 
 #include <linux/config.h>

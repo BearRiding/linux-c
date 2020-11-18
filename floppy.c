@@ -4,11 +4,17 @@
  *  (C) 1991  Linus Torvalds
  */
 
-/*
+/**
  * 02.12.91 - Changed to static variables to indicate need for reset
  * and recalibrate. This makes some things easier (output_byte reset
  * checking etc), and means less interrupt jumping in case of errors,
  * so the code is hopefully easier to understand.
+ * 5.setup 程序里的 cli 是为了什么？
+ * cli 为关中断，以为着程序在接下来的执行过程中，无论是否发生中断，系统都不再对此中 断进行响应。
+ * 因为在 setup 中，需要将位于 0x10000 的内核程序复制到 0x0000 处，
+ * bios 中断向量表覆盖 掉了，若此时如果产生中断，这将破坏原有的中断机制会发生不可预知的错误，
+ * 所以要禁示 中断。
+
  */
 
 /*

@@ -2,6 +2,41 @@
  *  linux/fs/namei.c
  *
  *  (C) 1991  Linus Torvalds
+ * 
+ * 15.进程0开始创建进程1，调用fork（），跟踪代码时我们发现，fork代码执行了两次，第一次，执行fork代码后，跳过init（）直接执行了for(;;) pause()，第二次执行fork代码后，执行了init（）。奇怪的是，我们在代码中并没有看到向转向fork的goto语句，也没有看到循环语句，是什么原因导致fork反复执行？请说明理由（可以图示），并给出代码证据。
+主要涉及的代码位置如下：
+Init/main.c 代码中P103 —— if 判断
+Include/unistd.h 中P102 —— fork函数代码
+进程1 TSS赋值，特别是 eip，eax 赋值
+copy_process:
+p->pid = last_pid;
+…
+p->tss.eip = eip;
+p->tss.eflags = eflags;
+p->tss.eax = 0;
+…
+p->tss.esp = esp;
+…
+p->tss.cs = cs & 0xffff;
+p->tss.ss = ss & 0xffff;
+…
+p->state = TASK_RUNNING;
+return last_pid;
+原因
+fork 为 inline 函数，其中调用了 sys_call0，产生 0x80 中断，将 ss, esp, eflags, cs, eip 压栈，其中 eip 为 int 0x80 的下一句的地址。在 copy_process 中，内核将进程 0 的 tss 复制得到进程 1 的 tss，并将进程 1 的 tss.eax 设为 0，而进程 0 中的 eax 为 1。在进程调度时 tss 中的值被恢复至相应寄存器中，包括 eip， eax 等。所以中断返回后，进程 0 和进程 1 均会从 int  0x80 的下一句开始执行，即 fork 执行了两次。
+由于 eax 代表返回值，所以进程 0 和进程 1 会得到不同的返回值，在fork返回到进程0后，进程0判断返回值非 0，因此执行代码for(;;) pause();
+在sys_pause函数中，内核设置了进程0的状态为 TASK_INTERRUPTIBLE，并进行进程调度。由于只有进程1处于就绪态，因此调度执行进程1的指令。由于进程1在TSS中设置了eip等寄存器的值，因此从 int 0x80 的下一条指令开始执行，且设定返回 eax 的值作为 fork 的返回值（值为 0），因此进程1执行了 init 的 函数。导致反复执行，主要是利用了两个系统调用 sys_fork 和 sys_pause 对进程状态的设置，以及利用了进程调度机制。
+
+16、详细分析进程调度的全过程。考虑所有可能（signal、alarm除外）
+1. 进程中有就绪进程，且时间片没有用完。
+正常情况下，schedule()函数首先扫描任务数组。通过比较每个就绪（TASK_RUNNING）任务的运行时间递减滴答计数counter 的值来确定当前哪个进程运行的时间最少。哪一个的值大，就表示运行时间还不长，于是就选中该进程，最后调用switch_to()执行实际的进程切换操作
+2. 进程中有就绪进程，但所有就绪进程时间片都用完（c=0）
+如果此时所有处于TASK_RUNNING 状态进程的时间片都已经用完，系统就会根据每个进程的优先权值priority，对系统中所有进程（包括正在睡眠的进程）重新计算每个任务需要运行的时间片值counter。计算的公式是：
+counter = counter + priority/2
+然后 schdeule()函数重新扫描任务数组中所有处于TASK_RUNNING 状态，重复上述过程，直到选择出一个进程为止。最后调用switch_to()执行实际的进程切换操作。
+3. 所有进程都不是就绪的c=-1
+此时代码中的c=-1，next=0，跳出循环后，执行switch_to(0)，切换到进程0执行，因此所有进程都不是就绪的时候进程0执行。
+
  */
 
 /*

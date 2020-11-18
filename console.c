@@ -15,11 +15,20 @@
  * Beeping thanks to John T Kohl.
  */
 
-/*
+/**
  *  NOTE!!! We sometimes disable and enable interrupts for a short while
  * (to put a word in video IO), but this will work even for keyboard
  * interrupts. We know interrupts aren't enabled when getting a keyboard
  * interrupt, as we use trap-gates. Hopefully all is well.
+ * 2.为什么BIOS只加载了一个扇区，后续扇区却是由bootsect代码加载？
+ * 为什么BIOS没有直接把所有需要加载的扇区都加载？
+ * 对 BIOS 而言，“约定”在接到启动操作系统的命令后，
+ * “定位识别”只从启动扇区把代码加载 到 0x7c00 这个位置。
+ * 后续扇区则由 bootsect 代码加载，这些代码由编写系统的用户负责， 
+ * 与 BIOS 无关。这样构建的好处是站在整个体系的高度，统一设计和统一安排，
+ * 简单而有效。 BIOS 和操作系统的开发都可以遵循这一约定，灵活地进行各自的设计。
+ * 操作系统的开发也 可以按照自己的意愿，内存的规划，等等都更为灵活 
+
  */
 
 /*

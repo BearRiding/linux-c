@@ -9,6 +9,39 @@
  * state in 'asm.s'. Currently mostly a debugging-aid, will be extended
  * to mainly kill the offending process (probably by giving it a signal,
  * but possibly by killing it outright if necessary).
+ * 24 详细分析一个进程从创建、加载程序、执行、退出的全过程。
+1. 创建进程，调用 fork 函数。
+a) 准备阶段，为进程在 task[64]找到空闲位置，即 find_empty_process（）；
+b) 为进程管理结构找到储存空间： task_struct 和内核栈。
+c) 父进程为子进程复制 task_struct 结构
+d) 复制新进程的页表并设置其对应的页目录项
+e) 分段和分页以及文件继承。
+f) 建立新进程与全局描述符表（GDT）的关联
+g) 将新进程设为就绪态
+2. 加载进程
+a) 检查参数和外部环境变量和可执行文件
+b) 释放进程的页表
+c) 重新设置进程的程序代码段和数据段
+d) 调整进程的 task_struct
+3. 进程运行
+a) 产生缺页中断并由操作系统响应
+b) 为进程申请一个内存页面
+c) 将程序代码加载到新分配的页面中
+d) 将物理内存地址与线性地址空间对应起来
+e) 不断通过缺页中断加载进程的全部内容
+f) 运行时如果进程内存不足继续产生缺页中断，
+4. 进程退出
+a) 进程先处理退出事务
+b) 释放进程所占页面
+c) 解除进程与文件有关的内容并给父进程发信号
+d) 进程退出后执行进程调度
+
+
+25 为什么 get_free_page（）将新分配的页面清 0？（P265）
+因为无法预知这页内存的用途，如果用作页表，不清零就有垃圾值，就是隐患
+Linux在回收页面时并没有将页面清0，只是将mem_map中与该页对应的位置0。在使用get_free_page申请页时，也是遍历mem_map寻找对应位为0的页，但是该页可能存在垃圾数据，如果不清0的话，若将该页用做页表，则可能导致错误的映射，引发错误，所以要将新分配的页面清0。
+
+ * 
  */
 #include <string.h>
 

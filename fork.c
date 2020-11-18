@@ -4,11 +4,19 @@
  *  (C) 1991  Linus Torvalds
  */
 
-/*
+/**
  *  'fork.c' contains the help-routines for the 'fork' system call
  * (see also system_call.s), and some misc functions ('verify_area').
  * Fork is rather simple, once you get the hang of it, but the memory
  * management can be a bitch. See 'mm/mm.c': 'copy_page_tables()'
+ * 6.setup程序的最后是jmpi 0,8，为什么这个8不能简单的当作阿拉伯数字8看待，究竟有什么内涵？
+ * 这里 8 要看成二进制 1000，最后两位 00 表示内核特权级，
+ * 第三位 0 表示 GDT 表，第四位 1 表示所选的表（在此就是 GDT 表）的 
+ * 1 项来确定代码段的段基址和段限长等信息。这样， 
+ * 我们可以得到代码是从段基址 0x00000000、偏移为 0 处开始执行的，
+ * 即 head 的开始位置。 注意到已经开启了保护模式的机制，
+ * 所以这里的 8 不能简单的当成阿拉伯数字 8 来看待。
+
  */
 #include <errno.h>
 

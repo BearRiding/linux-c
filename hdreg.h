@@ -1,7 +1,15 @@
-/*
+/**
  * This file contains some defines for the AT-hd-controller.
  * Various sources. Check out some definitions (see comments with
  * a ques).
+ * 9.Linux 是用C语言写的，为什么没有从 main还是开始，而是先运行 3 个汇编程序，道理何在？
+ * main 函数运行在 32 位的保护模式下，但系统启动时默认为 16 位的实模式， 
+ * 开机时 的 16 位实 模式与 main 函数执行需要的 32 位保护模式之间有很大的差距，
+ * 这个差距需 要由 3 个汇编程序来 填补。其中 bootsect 负责加载， 
+ * setup 与 head 则负责获取硬件参 数，准备 idt,gdt,开启 A20， PE,PG， 
+ * 废弃旧的 16 位中断响应机制，建立新的 32 为 IDT，设置分页机制等。
+ * 这些工作做完后，计算机处在了32位的保护模式状态了，调用main的条件 就算准备完毕。
+
  */
 #ifndef _HDREG_H
 #define _HDREG_H

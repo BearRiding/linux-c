@@ -1,5 +1,25 @@
 /*
  *  linux/kernel/blk_drv/ramdisk.c
+ * 
+ * 24、add_request（）函数中有下列代码
+if (!(tmp = dev->current_request)) {
+        dev->current_request = req;
+        sti();
+        (dev->request_fn)();
+        return;
+    }
+其中的
+    if (!(tmp = dev->current_request)) {
+        dev->current_request = req;
+是什么意思？
+检查设备是否正忙，若目前该设备没有请求项，本次是唯一一个请求，之前无链表，则将该设备当前请求项指针直接指向该请求项，作为链表的表头。
+
+
+
+25、（有疑问）do_hd_request()函数中dev的含义始终一样吗？(P318)
+\linux0.11\kernel\blk_drv\hd.c  void do_hd_request(void)
+答：do_hd_request()函数主要用于处理当前硬盘请求项。但其中的dev含义并不一致。“dev = MINOR(CURRENT->dev);”表示取设备号中的子设备号（逻辑盘号？）。“dev /= 5;”此时，dev代表硬盘号（硬盘0还是硬盘1）。
+
  *
  *  Written by Theodore Ts'o, 12/2/91
  */

@@ -6,12 +6,20 @@
  * root-device by changing the line ROOT_DEV = XXX in boot/bootsect.s
  */
 
-/*
+/**
  * define your keyboard here -
  * KBD_FINNISH for Finnish keyboards
  * KBD_US for US-type
  * KBD_GR for German keyboards
  * KBD_FR for Frech keyboard
+ * 1.为什么开始启动计算机的时候，
+ * 执行的是BIOS代码而不是操作系统自身的代码？
+ * 计算机启动的时候，内存未初始化，
+ * CPU不能直接从外设运行操作系统，所以必须将操作系统加载至内存中。
+ * 而这个工作最开始的部分，BIOS 需要完成一些检测工作，
+ * 和设置实模式下的中断向量表和服务程序，并将操作系统的引导扇区加载值0x7C00处，
+ * 然后将跳转至0x7C00。这些就是由 bios 程序来实现的。所以计算机启动最开始执行的是 bios 代码。 
+
  */
 /*#define KBD_US */
 /*#define KBD_GR */

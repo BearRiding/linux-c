@@ -8,7 +8,7 @@
 
 #include <sys/types.h>
 
-/* devices are as follows: (same as minix, so we can use the minix
+/** devices are as follows: (same as minix, so we can use the minix
  * file system. These are major numbers.)
  *
  * 0 - unused (nodev)
@@ -19,6 +19,18 @@
  * 5 - /dev/tty
  * 6 - /dev/lp
  * 7 - unnamed pipes
+ * 7.打开A20和打开pe究竟是什么关系，保护模式不就是32位的吗？为什么还要打开A20？有必要吗？
+ * 1、打开 A20 仅仅意味着 CPU 可以进行 32 位寻址，且最大寻址空间是 4GB。
+ * 打开 PE是进入保护模式。A20 是 cpu 的第 21 位地址线，A20 未打开的时候，
+ * 实模式中 cs：ip 最大寻址 为 1MB+64KB,而第 21 根地址线被强制为 0，
+ * 所以相当于 cpu“回滚”到内存地址起始处寻址。 当打开 A20 的时候，
+ * 实模式下 cpu 可以寻址到 1MB 以上的高端内存区。A20 未打开时，如 果打开 pe ， 
+ * 则 cpu 进入保护模式， 但是可以访问的内存只能是奇数 1M 段， 即 0-1M,2M-3M,4-5M 等。
+ * A20 被打开后，如果打开 pe，则可以访问的内存是连续的。打开 A20 是打开 PE 的必要条件；
+ * 而打开 A20 不一定非得打开 PE。
+ * 2、有必要。打开 PE 只是说明系统处于保护模式下，但若真正在保护模式下工作，
+ * 必须打 开 A20，实现 32 位寻址。
+
  */
 
 #define IS_SEEKABLE(x) ((x)>=1 && (x)<=3)

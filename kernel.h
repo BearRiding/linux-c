@@ -1,5 +1,12 @@
 /*
  * 'kernel.h' contains some often-used function prototypes etc
+ * 
+ * 13，cpl、rpl、dpl分别是什么意思？记录在什么位置？
+描述符特权级（DPL）域——（段描述符的第二个双字的第 13 和第 14 位）确定段的特权级。
+请求特权级（RPL）域——（段选择子的第 0 和第 1 位）确定段选择子的请求特权级。
+当前特权级（CPL）域——（CS 段寄存器的第 0 和第 1 位）指明当前执行程序/例程的特权级。
+术语“当前特权级（CPL）”就是指这个域的设置。
+
  */
 void verify_area(void * addr,int count);
 volatile void panic(const char * str);

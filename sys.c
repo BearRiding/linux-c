@@ -1,5 +1,38 @@
 /*
  *  linux/kernel/sys.c
+ * 
+ * 16.根据代码详细说明 copy_process 函数的所有参数是如何形成的？
+long eip, long cs, long eflags, long esp, long ss；这五个参数是中断使 CPU 自动压栈的。
+long ebx, long ecx, long edx, long fs, long es, long ds 为__system_call 压进栈的参数。
+long none 为__system_call 调用__sys_fork 压进栈 EIP 的值。
+Int nr, long ebp, long edi, long esi, long gs,为__system_call 压进栈的值。
+
+
+
+17.进程 0 创建进程 1 时调用 copy_process 函数，在其中直接、间接调用了两次 get_free_page函数，在物理内存中获得了两个页，分别用作什么？是怎么设置的？给出代码证据。（P89 91 92P97-98 ）
+第一次调用get_free_page函数申请的空闲页面用于进程1 的task_struct及内核栈。首先将申请到的页面清0，然后复制进程0的task_struct，再针对进程1作个性化设置，其中esp0 的设置，意味着设置该页末尾为进程 1 的堆栈的起始地址。代码见P90 及 P92。
+sched.c
+struct task_struct *current = &(init_task.task);
+fork.c
+p = (struct task_struct *) get_free_page();
+…
+*p = *current;
+p->tss.esp0 = PAGE_SIZE + (long) p;
+其中*current 即为进程 0 的 task 结构，在 copy_process 中，先复制进程 0 的 task_struct，然后再对其中的值进行修改。 esp0 的设置，意味着设置该页末尾为进程 1 的堆栈的起始地址。
+第二次调用get_free_page函数申请的空闲页面用于进程1的页表。在创建进程1执行copy_process中，执行copy_mem(nr,p)时，内核为进程1拷贝了进程 0的页表（160 项），同时修改了页表项的属性为只读。代码见P98。。
+copy_mem
+…
+if (copy_page_tables(old_data_base,new_data_base,data_limit)){
+…
+其中， copy_page_tables 内部
+…
+from_page_table = (unsigned long *) (0xfffff000 & *from_dir);
+if (!(to_page_table = (unsigned long *) get_free_page()))
+…
+for ( ; nr-- > 0 ; from_page_table++,to_page_table++) {
+… }
+获取了新的页，且从 from_page_table 将页表值拷贝到 to_page_table 处。
+
  *
  *  (C) 1991  Linus Torvalds
  */

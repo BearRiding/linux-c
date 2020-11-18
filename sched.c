@@ -9,6 +9,39 @@
  * (sleep_on, wakeup, schedule etc) as well as a number of simple system
  * call functions (type getpid(), which just extracts a field from
  * current-task
+ * 
+ * 28、getblk（）函数中，两次调用wait_on_buffer（）函数，两次的意思一样吗？
+代码在书上113和114
+答：不一样。 都是等待缓冲块解锁。
+第一次调用是在， 已经找到一个比较合适的空闲缓冲块， 但是此块可能是加锁的， 于是等待该缓冲块解锁。
+第二次调用，是找到一个缓冲块，但是此块被修改过，即是脏的， 还有其他进程在写或此块，则将数据写盘，并在此等待该缓冲块解锁
+
+不一样。第一处“wait_on_buffer(bh);”是已经找到一个比较合适的空闲缓冲块了，于是先等待缓冲块解锁。第二处“wait_on_buffer(bh);”是如果该缓冲区已被修改，则将数据写盘，并再次等待缓冲块解锁。
+
+29、getblk（）函数中
+do {
+        if (tmp->b_count)
+            continue;
+        if (!bh || BADNESS(tmp)<BADNESS(bh)) {
+            bh = tmp;
+            if (!BADNESS(tmp))
+                break;
+        }
+/* and repeat until we find something good */
+    } while ((tmp = tmp->b_next_free) != free_list);
+说明什么情况下执行continue、break。
+
+（P114代码）
+Continue：if (tmp->b_count)在判断缓冲块的引用计数，如果引用计数不为0，那么继续判断空闲队列中下一个缓冲块（即continue），直到遍历完。
+Break：如果有引用计数为0的块，那么判断空闲队列中那些引用计数为0 的块的badness，找到一个最小的，如果在寻找的过程中出现badness为0的块，那么就跳出循环（即break）。
+
+如果利用函数get_hash_table找到了能对应上设备号和块号的缓冲块，那么直接返回。
+如果找不到，那么就分为三种情况：
+1.所有的缓冲块b_count=0，缓冲块是新的。
+2.虽然有b_count=0，但是有数据脏了，未同步或者数据脏了正在同步加和既不脏又不加锁三种情况；
+3.所有的缓冲块都被引用，此时b_count非0，即为所有的缓冲块都被占用了。
+综合以上三点可知，如果缓冲块的b_count非0，则continue继续查找，知道找到b_count=0的缓冲块；如果获取空闲的缓冲块，而且既不加锁又不脏，此时break，停止查找。
+
  */
 #include <linux/sched.h>
 #include <linux/kernel.h>
